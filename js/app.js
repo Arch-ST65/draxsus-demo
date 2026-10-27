@@ -35,8 +35,7 @@ const ROUTES = {
 // Screens that open as a sheet sliding up; everything else cross-fades
 const SHEETS = new Set(['scan', 'unlock', 'detail', 'tradeQr', 'tradeConfirm', 'parentGate', 'askParent']);
 
-// On a phone (or with ?app) the prototype runs full screen as the app itself: no drawn device frame — the real
-// status bar sits over the 58px top inset every screen already keeps.
+// On a phone (or with ?app) the prototype runs full screen as the app itself, without the drawn device frame.
 const IS_PHONE = new URLSearchParams(location.search).has('app') || navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 600;
 if (IS_PHONE) document.documentElement.classList.add('phone');
 function PrototypeApp({
@@ -84,26 +83,45 @@ function PrototypeApp({
   }, screen));
 }
 
-// Full-screen shell for a real phone: screens are laid out at 390×844 and don't scroll, so the app scales to
-// the device width and takes the full height (≈ 844 on every current iPhone in home-screen mode). In Safari
-// with its toolbars the screen is shorter: then the app scales to the height and centres instead of squashing.
-// Three quick taps on the status-bar strip restart the demo from the first screen.
+// Full-screen shell for a real phone. Screens are laid out at 390×844 and don't scroll, with a 58 px strip at
+// the top for the status bar. The app scales to the space the phone gives it and centres in what's left:
+// - status bar drawn over the page: the app is the whole screen and the strip sits under the clock. iOS
+//   home-screen apps can report innerHeight without the status bar at launch, so the height is screen.height;
+// - status bar above the page (opaque): the strip would only add an empty band, so the top 46 px of every screen
+//   are cut off and the screens start just under the bar.
+// Three quick taps along the top edge restart the demo from the first screen; the taps still reach the screen.
+const STATUS_CROP = 46;
+function measurePhone() {
+  const safeTop = document.getElementById('safe-top').getBoundingClientRect().height;
+  const w = window.innerWidth;
+  let h = Math.max(window.innerHeight, document.documentElement.clientHeight);
+  if (safeTop > 20 && navigator.standalone && h > w) h = Math.max(h, screen.height);
+  return {
+    w,
+    h,
+    crop: safeTop > 20 ? 0 : STATUS_CROP
+  };
+}
 function PhoneApp() {
-  const [size, setSize] = useState({
-    w: window.innerWidth,
-    h: window.innerHeight
-  });
+  const [size, setSize] = useState(measurePhone);
   const [resetKey, setResetKey] = useState(0);
   const taps = React.useRef([]);
   useEffect(() => {
-    const onResize = () => setSize({
-      w: window.innerWidth,
-      h: window.innerHeight
-    });
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    // iOS settles the size a moment after launch and after the app comes back from the background
+    const update = () => setSize(measurePhone());
+    const timers = [100, 500, 1500].map(t => setTimeout(update, t));
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    document.addEventListener('visibilitychange', update);
+    return () => {
+      timers.forEach(clearTimeout);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+      document.removeEventListener('visibilitychange', update);
+    };
   }, []);
-  const onStatusBar = () => {
+  const onTopTap = e => {
+    if (e.clientY > 24) return;
     const t = Date.now();
     taps.current = [...taps.current.filter(x => t - x < 900), t];
     if (taps.current.length >= 3) {
@@ -111,8 +129,14 @@ function PhoneApp() {
       setResetKey(k => k + 1);
     }
   };
-  const k = Math.min(size.w / 390, size.h / 844);
+  const {
+    w,
+    h,
+    crop
+  } = size;
+  const k = Math.min(w / 390, h / (844 - crop));
   return /*#__PURE__*/React.createElement("div", {
+    onPointerDownCapture: onTopTap,
     style: {
       position: 'fixed',
       inset: 0,
@@ -122,27 +146,17 @@ function PhoneApp() {
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      left: (size.w - 390 * k) / 2,
-      top: 0,
+      left: (w - 390 * k) / 2,
+      top: -crop * k,
       width: 390,
-      height: size.h / k,
+      height: h / k + crop,
       transform: `scale(${k})`,
       transformOrigin: '0 0'
     }
   }, /*#__PURE__*/React.createElement(PrototypeApp, {
     key: resetKey,
     bare: true
-  })), /*#__PURE__*/React.createElement("div", {
-    onClick: onStatusBar,
-    style: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      top: 0,
-      height: 44 * k,
-      zIndex: 100
-    }
-  }));
+  })));
 }
 function App() {
   const [scale, setScale] = useState(1);

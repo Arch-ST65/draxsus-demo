@@ -8,7 +8,7 @@
 <!-- installed on a phone home screen it opens full screen, like the app itself -->
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
 <meta name="apple-mobile-web-app-title" content="DRAXSUS"/>
 <meta name="theme-color" content="#08080C"/>
 <link rel="apple-touch-icon" href="assets/app-icon-180.png"/>
@@ -34,6 +34,8 @@
 </head>
 <body>
 <div id="root"></div>
+<!-- measures env(safe-area-inset-top): how much of the page lies under the phone's status bar -->
+<div id="safe-top" style="position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top);visibility:hidden;pointer-events:none"></div>
 
 <script src="vendor/react.production.min.js"></script>
 <script src="vendor/react-dom.production.min.js"></script>
