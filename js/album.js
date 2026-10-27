@@ -278,7 +278,32 @@ function Collections() {
 }
 
 // ─── 2.2 ALBUM GRID (one collection) ─────────────────────────
+// All 288 slots in number order, scrolling. The kid owns the cards the prototype has art for, minus the few
+// gaps below; dupes are counted copies. «Все» opens at the first owned card.
 // lockedIds: owned cards to show as empty slots (the video uses it to keep a card for a later scene)
+var WC_GAPS = [75, 78, 82, 84];
+var WC_DUPES = {
+  'wc-074': 1,
+  'wc-080': 2,
+  'wc-087': 1,
+  'wc-090': 1,
+  'wc-146': 1,
+  'wc-161': 3,
+  'wc-164': 1
+};
+var WC_SLOTS = Array.from({
+  length: 288
+}, function (_, i) {
+  var n = i + 1,
+    id = "wc-".concat(String(n).padStart(3, '0'));
+  return CARDS[id] && !WC_GAPS.includes(n) ? {
+    id: id,
+    n: n,
+    d: WC_DUPES[id] || 0
+  } : {
+    n: n
+  };
+});
 function Album(_ref4) {
   var _ref4$initialFilter = _ref4.initialFilter,
     initialFilter = _ref4$initialFilter === void 0 ? 0 : _ref4$initialFilter,
@@ -290,44 +315,35 @@ function Album(_ref4) {
     _React$useState2 = _slicedToArray(_React$useState, 2),
     f = _React$useState2[0],
     setF = _React$useState2[1];
+  var scroller = React.useRef(null);
   var buy = function buy() {
     return nav.go('askParent', 'wc');
   };
-  var all = [{
-    id: 'wc-073'
-  }, {
-    id: 'wc-074',
-    d: 1
-  }, {
-    n: 75
-  }, {
-    id: 'wc-076'
-  }, {
-    id: 'wc-077'
-  }, {
-    n: 78
-  }, {
-    id: 'wc-079'
-  }, {
-    id: 'wc-080',
-    d: 2
-  }, {
-    id: 'wc-081'
-  }, {
-    n: 82
-  }, {
-    id: 'wc-083'
-  }, {
-    n: 84
-  }];
-  var missing = [75, 78, 82, 84, 85, 88, 91, 93].map(function (n) {
-    return {
-      n: n
-    };
+  var slots = WC_SLOTS.map(function (t) {
+    return t.id && lockedIds.includes(t.id) ? {
+      n: t.n
+    } : t;
   });
-  var tiles = f === 2 ? missing : all;
+  var tiles = [slots, slots.filter(function (t) {
+    return t.id;
+  }), slots.filter(function (t) {
+    return !t.id;
+  }), slots.filter(function (t) {
+    return t.d;
+  })][f];
+  React.useLayoutEffect(function () {
+    var box = scroller.current,
+      first = box && box.querySelector('[data-owned]');
+    if (box) box.scrollTop = f === 0 && first ? first.offsetTop - 4 : 0;
+  }, [f]);
   return /*#__PURE__*/React.createElement(Screen, {
     tab: "album"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column'
+    }
   }, /*#__PURE__*/React.createElement(TopBar, {
     left: /*#__PURE__*/React.createElement("div", {
       style: {
@@ -451,37 +467,26 @@ function Album(_ref4) {
       marginTop: 14
     }
   }, /*#__PURE__*/React.createElement(Segment, {
-    items: [['Все', c.total], ['Есть', c.owned], ['Нет', c.total - c.owned], ['Дубли', 7]],
+    items: [['Все', c.total], ['Есть', c.owned], ['Нет', c.total - c.owned], ['Дубли', Object.keys(WC_DUPES).length]],
     active: f,
     onPick: setF
   }))), /*#__PURE__*/React.createElement("div", {
+    ref: scroller,
+    className: "iframe-scroll",
     style: {
-      marginTop: 14,
-      padding: '0 20px',
-      display: 'grid',
-      gridTemplateColumns: 'repeat(4, 1fr)',
-      gap: 9,
-      rowGap: 11
+      position: 'relative',
+      flex: 1,
+      minHeight: 0,
+      marginTop: 10,
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
+      overscrollBehavior: 'contain',
+      maskImage: 'linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 18px), transparent 100%)',
+      WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 18px), transparent 100%)'
     }
-  }, tiles.map(function (t, i) {
-    return t.id && !lockedIds.includes(t.id) ? /*#__PURE__*/React.createElement(Card, {
-      key: i,
-      id: t.id,
-      w: 80,
-      dupes: t.d || 0,
-      onClick: function onClick() {
-        return nav.go('detail', t.id);
-      }
-    }) : /*#__PURE__*/React.createElement(Card, {
-      key: i,
-      num: t.n || t.id && CARDS[t.id].num,
-      total: 288,
-      locked: true,
-      w: 80
-    });
-  })), f === 2 && /*#__PURE__*/React.createElement("div", {
+  }, f === 2 && /*#__PURE__*/React.createElement("div", {
     style: {
-      margin: '14px 20px 0',
+      margin: '6px 20px 4px',
       padding: 14,
       borderRadius: 18,
       background: 'linear-gradient(135deg, rgba(255,31,45,0.16), rgba(255,31,45,0.04))',
@@ -527,7 +532,33 @@ function Album(_ref4) {
       color: "#fff"
     }),
     onClick: buy
-  }, "\u0414\u043E\u043A\u0443\u043F\u0438\u0442\u044C"))));
+  }, "\u0414\u043E\u043A\u0443\u043F\u0438\u0442\u044C"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '6px 20px 22px',
+      display: 'grid',
+      gridTemplateColumns: 'repeat(4, 1fr)',
+      gap: 9,
+      rowGap: 11
+    }
+  }, tiles.map(function (t) {
+    return t.id ? /*#__PURE__*/React.createElement("div", {
+      key: t.n,
+      "data-owned": true
+    }, /*#__PURE__*/React.createElement(Card, {
+      id: t.id,
+      w: 80,
+      dupes: t.d,
+      onClick: function onClick() {
+        return nav.go('detail', t.id);
+      }
+    })) : /*#__PURE__*/React.createElement(Card, {
+      key: t.n,
+      num: t.n,
+      total: 288,
+      locked: true,
+      w: 80
+    });
+  })))));
 }
 
 // ─── 2.3 CARD DETAIL (super rare, registered) ────────────────
