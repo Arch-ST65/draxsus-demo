@@ -8,7 +8,7 @@
 <!-- installed on a phone home screen it opens full screen, like the app itself -->
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="DRAXSUS"/>
 <meta name="theme-color" content="#08080C"/>
 <link rel="apple-touch-icon" href="assets/app-icon-180.png"/>
@@ -30,6 +30,12 @@
   /* phone: the prototype is the whole screen — no rubber-band scroll, no text selection or tap flashes */
   html.phone, html.phone body { background: #08080C; overscroll-behavior: none; -webkit-user-select: none; user-select: none;
     -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; touch-action: manipulation; }
+  /* iOS 26 home-screen app: while the page is shorter than the screen, the viewport is shorter by the status bar
+     and fixed content isn't drawn below it; a page as tall as the screen gets the whole screen
+     (WebKit bug 301108, same fix as frappe-ui #1284) */
+  @media (display-mode: standalone) {
+    html { min-height: min(100lvh, calc(100% + env(safe-area-inset-top))); }
+  }
 </style>
 </head>
 <body>

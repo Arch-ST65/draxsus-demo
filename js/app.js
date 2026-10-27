@@ -83,23 +83,24 @@ function PrototypeApp({
   }, screen));
 }
 
-// Full-screen shell for a real phone. Screens are laid out at 390×844 and don't scroll, with a 58 px strip at
-// the top for the status bar. The app scales to the space the phone gives it and centres in what's left:
-// - status bar drawn over the page: the app is the whole screen and the strip sits under the clock. iOS
-//   home-screen apps can report innerHeight without the status bar at launch, so the height is screen.height;
-// - status bar above the page (opaque): the strip would only add an empty band, so the top 46 px of every screen
-//   are cut off and the screens start just under the bar.
-// Three quick taps along the top edge restart the demo from the first screen; the taps still reach the screen.
-const STATUS_CROP = 46;
+// Full-screen shell for a real phone. Screens are laid out at 390×844 and don't scroll; their top 58 px are a
+// strip for the status bar with only background in it. iOS 26 blurs whatever lies under the status bar and a
+// little below it, so on the phone the screens' content starts TOP_CLEAR below the status bar (or just under an
+// opaque one), and the app scales to fit the rest of the screen and centres in it.
+// Three quick taps on the empty band at the top restart the demo from the first screen.
+const STRIP = 58,
+  TOP_CLEAR = 36;
 function measurePhone() {
   const safeTop = document.getElementById('safe-top').getBoundingClientRect().height;
-  const w = window.innerWidth;
-  let h = Math.max(window.innerHeight, document.documentElement.clientHeight);
-  if (safeTop > 20 && navigator.standalone && h > w) h = Math.max(h, screen.height);
+  const w = window.innerWidth,
+    h = window.innerHeight;
+  const top = safeTop > 0 ? safeTop + TOP_CLEAR : 12; // where design y = 58 lands
+  const k = Math.min(w / 390, (h - top) / (844 - STRIP));
   return {
     w,
     h,
-    crop: safeTop > 20 ? 0 : STATUS_CROP
+    top,
+    k
   };
 }
 function PhoneApp() {
@@ -120,21 +121,22 @@ function PhoneApp() {
       document.removeEventListener('visibilitychange', update);
     };
   }, []);
+  const {
+    w,
+    h,
+    top,
+    k
+  } = size;
   const onTopTap = e => {
-    if (e.clientY > 24) return;
+    if (e.clientY > Math.max(top, 24)) return;
     const t = Date.now();
     taps.current = [...taps.current.filter(x => t - x < 900), t];
     if (taps.current.length >= 3) {
       taps.current = [];
-      setResetKey(k => k + 1);
+      setResetKey(n => n + 1);
     }
   };
-  const {
-    w,
-    h,
-    crop
-  } = size;
-  const k = Math.min(w / 390, h / (844 - crop));
+  const y0 = top - STRIP * k;
   return /*#__PURE__*/React.createElement("div", {
     onPointerDownCapture: onTopTap,
     style: {
@@ -147,9 +149,9 @@ function PhoneApp() {
     style: {
       position: 'absolute',
       left: (w - 390 * k) / 2,
-      top: -crop * k,
+      top: y0,
       width: 390,
-      height: h / k + crop,
+      height: (h - y0) / k,
       transform: `scale(${k})`,
       transformOrigin: '0 0'
     }
