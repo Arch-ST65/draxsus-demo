@@ -1,0 +1,63 @@
+/* DRAXSUS app design tokens */
+:root {
+  --bg: #08080C;
+  --bg-2: #0E0E16;
+  --surf: #14141E;
+  --surf-2: #1B1B28;
+  --elev: #232336;
+  --line: rgba(255,255,255,0.07);
+  --line-2: rgba(255,255,255,0.13);
+
+  --red: #FF1F2D;
+  --red-2: #FF4856;
+  --red-glow: rgba(255,40,55,0.55);
+
+  --rar-common: #8B8FA3;
+  --rar-rare:   #00D4FF;
+  --rar-epic:   #B14BFF;
+  --rar-legend: #FFD60A;
+
+  --tx-1: #FFFFFF;
+  --tx-2: #B4B4C4;
+  --tx-3: #6E6E80;
+  --tx-4: #4A4A5C;
+
+  --font-d: 'Unbounded', system-ui, sans-serif;
+  --font-b: 'Manrope', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; font-family: var(--font-b); -webkit-font-smoothing: antialiased; }
+body { background: #1a1a1a; }
+
+/* — display / body type — */
+.t-d { font-family: var(--font-d); font-weight: 800; letter-spacing: -0.02em; }
+.t-b { font-family: var(--font-b); }
+.up  { text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Card surface — used both in grid and showcase */
+.card-surf {
+  position: relative; overflow: hidden;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #1a1a26 0%, #0c0c14 100%);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.05);
+}
+.card-shine {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg,
+    transparent 35%,
+    rgba(255,255,255,0.12) 45%,
+    rgba(255,255,255,0.22) 50%,
+    rgba(255,255,255,0.05) 55%,
+    transparent 65%);
+  mix-blend-mode: screen;
+}
+.card-grain {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.6;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 4px);
+}
+
+/* hide scrollbars inside frames */
+.iframe-scroll::-webkit-scrollbar { display: none; }
+.iframe-scroll { scrollbar-width: none; }
