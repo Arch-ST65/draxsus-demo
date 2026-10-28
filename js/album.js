@@ -549,7 +549,14 @@ function Album(_ref4) {
       w: 80,
       dupes: t.d,
       onClick: function onClick() {
-        return nav.go('detail', t.id);
+        return nav.go('detail', {
+          id: t.id,
+          ids: tiles.filter(function (x) {
+            return x.id;
+          }).map(function (x) {
+            return x.id;
+          })
+        });
       }
     })) : /*#__PURE__*/React.createElement(Card, {
       key: t.n,
@@ -586,9 +593,37 @@ function Stat(_ref5) {
     }
   }, l));
 }
+
+// Swiping left / right (or tapping a card peeking in at the side) walks through the owned cards of the album
+// list the card was opened from — all of them when opened without one.
+var OWNED_WC = WC_SLOTS.filter(function (t) {
+  return t.id;
+}).map(function (t) {
+  return t.id;
+});
+var CARD_STEP = 236; // distance between neighbouring cards on the strip
+
 function CardDetail() {
   var nav = useNav();
-  var id = nav.data && CARDS[nav.data] && nav.data.startsWith('wc') ? nav.data : 'wc-087';
+  var data = nav.data || {};
+  var list = data.ids || OWNED_WC;
+  var want = typeof data === 'string' ? data : data.id;
+  var _React$useState3 = React.useState(function () {
+      return Math.max(0, list.indexOf(CARDS[want] ? want : 'wc-087'));
+    }),
+    _React$useState4 = _slicedToArray(_React$useState3, 2),
+    i = _React$useState4[0],
+    setI = _React$useState4[1];
+  var _React$useState5 = React.useState(0),
+    _React$useState6 = _slicedToArray(_React$useState5, 2),
+    dx = _React$useState6[0],
+    setDx = _React$useState6[1]; // strip offset while dragging, design px
+  var _React$useState7 = React.useState(false),
+    _React$useState8 = _slicedToArray(_React$useState7, 2),
+    settling = _React$useState8[0],
+    setSettling = _React$useState8[1];
+  var drag = React.useRef(null);
+  var id = list[i];
   var card = CARDS[id];
   var r = RARITY[card.rarity];
   var players = id === 'wc-087' ? [{
@@ -606,8 +641,84 @@ function CardDetail() {
       goals: [12, 9][i]
     };
   });
+
+  // slide the strip to the neighbouring card (or back into place) and make it the current one
+  var step = function step(s) {
+    if (settling) return;
+    var to = list[i + s] ? i + s : i;
+    setSettling(true);
+    setDx((i - to) * CARD_STEP);
+    setTimeout(function () {
+      setI(to);
+      setDx(0);
+      setSettling(false);
+    }, 260);
+  };
+  var onDown = function onDown(e) {
+    if (settling) return;
+    var el = e.currentTarget;
+    // the phone shell scales the app, so finger travel is converted to design px
+    drag.current = {
+      id: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      t: Date.now(),
+      k: el.getBoundingClientRect().width / el.offsetWidth,
+      on: false
+    };
+  };
+  var onMove = function onMove(e) {
+    var d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    var mx = (e.clientX - d.x) / d.k,
+      my = (e.clientY - d.y) / d.k;
+    if (!d.on) {
+      if (Math.abs(mx) < 8 || Math.abs(mx) < Math.abs(my)) return;
+      d.on = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    var pastEnd = mx > 0 && i === 0 || mx < 0 && i === list.length - 1;
+    setDx(pastEnd ? mx * 0.3 : mx);
+  };
+  var onUp = function onUp(e) {
+    var d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    if (!d.on) {
+      drag.current = null;
+      return;
+    }
+    var mx = (e.clientX - d.x) / d.k;
+    var flick = Date.now() - d.t < 250 && Math.abs(mx) > 20;
+    step(mx < -60 || flick && mx < 0 ? 1 : mx > 60 || flick && mx > 0 ? -1 : 0);
+  };
+  var onCancel = function onCancel() {
+    if (drag.current && drag.current.on) step(0);
+    drag.current = null;
+  };
+  // a drag isn't a tap: swallow the click that ends it
+  var onClickCapture = function onClickCapture(e) {
+    if (drag.current && drag.current.on) {
+      e.stopPropagation();
+      drag.current = null;
+    }
+  };
   return /*#__PURE__*/React.createElement(Screen, {
     padTop: 0
+  }, /*#__PURE__*/React.createElement("div", {
+    onPointerDown: onDown,
+    onPointerMove: onMove,
+    onPointerUp: onUp,
+    onPointerCancel: onCancel,
+    onClickCapture: onClickCapture,
+    onDragStart: function onDragStart(e) {
+      return e.preventDefault();
+    },
+    style: {
+      position: 'absolute',
+      inset: 0,
+      touchAction: 'none',
+      userSelect: 'none'
+    }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
@@ -649,13 +760,79 @@ function CardDetail() {
       top: 112,
       left: 0,
       right: 0,
-      display: 'flex',
-      justifyContent: 'center'
+      height: 312
     }
-  }, /*#__PURE__*/React.createElement(Card, {
-    id: id,
-    w: 196
-  })), /*#__PURE__*/React.createElement("div", {
+  }, list.map(function (cid, k) {
+    var off = k - i;
+    if (Math.abs(off) > 2) return null;
+    var x = off * CARD_STEP + dx,
+      far = Math.min(1, Math.abs(x) / CARD_STEP);
+    return /*#__PURE__*/React.createElement("div", {
+      key: cid,
+      onClick: off ? function () {
+        return step(Math.sign(off));
+      } : undefined,
+      style: {
+        position: 'absolute',
+        left: 97,
+        top: 0,
+        cursor: off ? 'pointer' : 'default',
+        transform: "translateX(".concat(x, "px) scale(").concat(1 - 0.14 * far, ")"),
+        opacity: 1 - 0.6 * far,
+        transition: settling ? 'transform .26s cubic-bezier(0.2, 0.8, 0.2, 1), opacity .26s' : 'none'
+      }
+    }, /*#__PURE__*/React.createElement(Card, {
+      id: cid,
+      w: 196
+    }));
+  })), list.length > 1 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: 436,
+      left: 0,
+      right: 0,
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: function onClick() {
+      return step(-1);
+    },
+    style: {
+      padding: 8,
+      display: 'flex',
+      cursor: 'pointer',
+      opacity: i > 0 ? 1 : 0.25
+    }
+  }, /*#__PURE__*/React.createElement(Icons.back, {
+    size: 14,
+    color: "#fff"
+  })), /*#__PURE__*/React.createElement("span", {
+    style: {
+      minWidth: 64,
+      textAlign: 'center',
+      fontFamily: 'Unbounded',
+      fontWeight: 700,
+      fontSize: 10,
+      color: 'var(--tx-3)',
+      letterSpacing: '0.1em'
+    }
+  }, i + 1, " \u0418\u0417 ", list.length), /*#__PURE__*/React.createElement("div", {
+    onClick: function onClick() {
+      return step(1);
+    },
+    style: {
+      padding: 8,
+      display: 'flex',
+      cursor: 'pointer',
+      opacity: i < list.length - 1 ? 1 : 0.25
+    }
+  }, /*#__PURE__*/React.createElement(Icons.chev, {
+    size: 14,
+    color: "#fff"
+  }))), /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       bottom: 0,
@@ -774,7 +951,7 @@ function CardDetail() {
       size: 16,
       color: "#fff"
     })
-  }, "\u0412 \u0432\u0438\u0442\u0440\u0438\u043D\u0443"))));
+  }, "\u0412 \u0432\u0438\u0442\u0440\u0438\u043D\u0443")))));
 }
 
 // ─── 4.1 RARE REGISTRY / HALL OF FAME ────────────────────────
